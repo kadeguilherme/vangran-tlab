@@ -1,4 +1,7 @@
 Vagrant.require_version ">= 2.3.7", "<= 2.4.1"
+
+number_machine = 3
+
 Vagrant.configure("2") do |config|
 
   config.vm.define "master" do |master|
@@ -19,13 +22,25 @@ Vagrant.configure("2") do |config|
     config.vm.define "work-0#{i}" do |work|
       vm_name = "work-0#{i}"
       work.vm.hostname = "elliot-0#{i}"
-      work.vm.box = "ubuntu/trusty64"
-      work.vm.box_version = "20191107.0.0"
+      work.vm.box = "bento/ubuntu-22.04"
+      work.vm.box_version = "202407.23.0"
       work.vm.box_check_update = true
-      work.vm.network "private_network", type: "dhcp"
-  
+      work.vm.network "private_network", ip: "192.168.56.#{20+i}"
+     # work.vm.network :forwarded_port, guest: 22, id: "ssh", disabled: true
+
+      #work.vm.network "forwarded_port", guest: 2200, host: 22
+      
       work.vm.provider "virtualbox" do |v|
         v.name = "work-0#{i}"
+      end
+      if i == number_machine
+        work.vm.provision :ansible do |ansible|
+          # Disable default limit to connect to all the machines
+          ansible.limit = "all"
+          ansible.playbook = "playbook.yml"
+          ansible.inventory_path = "host"
+          ansible.verbose = "v"
+        end
       end
     end
   end

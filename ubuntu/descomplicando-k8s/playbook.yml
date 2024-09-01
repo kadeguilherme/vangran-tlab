@@ -1,0 +1,11 @@
+# playbook.yml
+
+- name: install nginx and start service
+  hosts: all
+  become: true
+  tasks:
+   - name: install nginx
+     apt: name=nginx state=present
+
+   - name: start service
+     service: name=nginx state=restarted
