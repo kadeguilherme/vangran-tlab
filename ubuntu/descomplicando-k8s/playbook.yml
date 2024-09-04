@@ -1,11 +1,45 @@
 # playbook.yml
-
-- name: install nginx and start service
+- name: install k8s
   hosts: all
   become: true
+  vars:
+    deb_architecture: {
+      "aarch64": "arm64",
+      "x86_64": "amd64"
+    }
+    VERSION_STRING: 5:27.2.0-1~ubuntu.22.04~jammy
   tasks:
-   - name: install nginx
-     apt: name=nginx state=present
+  - name: Install package utils
+    ansible.builtin.apt:
+      pkg: 
+      - curl
+      - ca-certificates 
+      state: present
+      update_cache: yes
 
-   - name: start service
-     service: name=nginx state=restarted
+  - name: Creating directory keyrings and changes permissions
+    ansible.builtin.file:
+      path: /etc/apt/keyrings
+      mode: '0755'
+  
+  - name: Download file gpg docker
+    ansible.builtin.get_url:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      dest: /etc/apt/keyrings/docker.asc
+      mode: '0755'
+
+  - name: Add Docker APT repository
+    ansible.builtin.apt_repository:
+      repo: "deb [arch={{ [ansible_architecture] | map('extract', deb_architecture) | first }}  signed-by=/etc/apt/keyrings/docker.asc]  https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+      state: present
+      filename: "docker"
+
+  - name: Install the Docker packages
+    ansible.builtin.apt:
+      pkg: 
+      - docker-ce={{ VERSION_STRING }}
+      - docker-ce-cli={{ VERSION_STRING }}
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+      state: present
