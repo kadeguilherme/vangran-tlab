@@ -17,6 +17,23 @@
       state: present
       update_cache: yes
 
+  - name: Ensure group "docker" exists
+    ansible.builtin.group:
+      name: docker
+      state: present
+
+  - name: Add user to docker group'
+    ansible.builtin.user:
+      name: "{{  ansible_env.SUDO_USER }}"
+      groups: docker
+      append: true
+    register: add_to_docker_group_result
+  
+  - name: Include reset connection tasks
+    ansible.builtin.meta:
+      reset_connection
+    when: add_to_docker_group_result.changed == true
+
   - name: Creating directory keyrings and changes permissions
     ansible.builtin.file:
       path: /etc/apt/keyrings
