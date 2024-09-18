@@ -9,54 +9,62 @@
     }
     VERSION_STRING: 5:27.2.0-1~ubuntu.22.04~jammy
   tasks:
-  - name: Install package utils
-    ansible.builtin.apt:
-      pkg: 
-      - curl
-      - ca-certificates 
-      state: present
-      update_cache: yes
+  - name: Checking if Docker exists
+    ansible.builtin.command:  docker -v
+    register: result
+    ignore_errors: true
 
-  - name: Ensure group "docker" exists
-    ansible.builtin.group:
-      name: docker
-      state: present
-
-  - name: Add user to docker group'
-    ansible.builtin.user:
-      name: "{{  ansible_env.SUDO_USER }}"
-      groups: docker
-      append: true
-    register: add_to_docker_group_result
+  - name: Install Docker Engine
+    block:
+      - name: Install package utils
+        ansible.builtin.apt:
+          pkg: 
+          - curl
+          - ca-certificates 
+          state: present
+          update_cache: yes
   
-  - name: Include reset connection tasks
-    ansible.builtin.meta:
-      reset_connection
-    when: add_to_docker_group_result.changed == true
-
-  - name: Creating directory keyrings and changes permissions
-    ansible.builtin.file:
-      path: /etc/apt/keyrings
-      mode: '0755'
+      - name: Ensure group "docker" exists
+        ansible.builtin.group:
+          name: docker
+          state: present
   
-  - name: Download file gpg docker
-    ansible.builtin.get_url:
-      url: https://download.docker.com/linux/ubuntu/gpg
-      dest: /etc/apt/keyrings/docker.asc
-      mode: '0755'
-
-  - name: Add Docker APT repository
-    ansible.builtin.apt_repository:
-      repo: "deb [arch={{ [ansible_architecture] | map('extract', deb_architecture) | first }}  signed-by=/etc/apt/keyrings/docker.asc]  https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
-      state: present
-      filename: "docker"
-
-  - name: Install the Docker packages
-    ansible.builtin.apt:
-      pkg: 
-      - docker-ce={{ VERSION_STRING }}
-      - docker-ce-cli={{ VERSION_STRING }}
-      - containerd.io
-      - docker-buildx-plugin
-      - docker-compose-plugin
-      state: present
+      - name: Add user to docker group'
+        ansible.builtin.user:
+          name: "{{  ansible_env.SUDO_USER }}"
+          groups: docker
+          append: true
+        register: add_to_docker_group_result
+    
+      - name: Include reset connection tasks
+        ansible.builtin.meta:
+          reset_connection
+        when: add_to_docker_group_result.changed == true
+  
+      - name: Creating directory keyrings and changes permissions
+        ansible.builtin.file:
+          path: /etc/apt/keyrings
+          mode: '0755'
+    
+      - name: Download file gpg docker
+        ansible.builtin.get_url:
+          url: https://download.docker.com/linux/ubuntu/gpg
+          dest: /etc/apt/keyrings/docker.asc
+          mode: '0755'
+  
+      - name: Add Docker APT repository
+        ansible.builtin.apt_repository:
+          repo: "deb [arch={{ [ansible_architecture] | map('extract', deb_architecture) | first }}  signed-by=/etc/apt/keyrings/docker.asc]  https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+          state: present
+          filename: "docker"
+  
+      - name: Install the Docker packages
+        ansible.builtin.apt:
+          pkg: 
+          - docker-ce={{ VERSION_STRING }}
+          - docker-ce-cli={{ VERSION_STRING }}
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+          state: present
+    when: result is failed 
